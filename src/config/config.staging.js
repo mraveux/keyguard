@@ -1,0 +1,9 @@
+/* global Constants */
+
+// @ts-ignore
+const CONFIG = { // eslint-disable-line no-unused-vars
+    ALLOWED_ORIGIN: 'https://hub.nimiq.space',
+    NETWORK: Constants.NETWORK.TEST,
+    BTC_NETWORK: 'TEST', // BitcoinConstants is not included in the common bundle
+    ROOT_REDIRECT: 'https://wallet.nimiq.space',
+};
