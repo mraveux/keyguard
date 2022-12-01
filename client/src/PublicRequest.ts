@@ -1,8 +1,6 @@
 import * as Nimiq from '@nimiq/core-web';
 import { KeyguardCommand } from './KeyguardCommand';
 
-export { KeyguardCommand };
-
 export type ObjectType = {
     [key: string]: any;
 };
@@ -425,6 +423,7 @@ export type RedirectRequest
     | ConnectRequest
     | SignTransactionRequest
     | SignBtcTransactionRequest
+    | SignMultisigTransactionRequest
     | SimpleRequest
     | DeriveBtcXPubRequest
     | SignSwapRequest;
