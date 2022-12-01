@@ -1,5 +1,6 @@
 // tslint:disable-next-line no-reference
 /// <reference path="./KeyguardRequestNamespace.d.ts" />
+/// <reference path="./KeyguardCommand.d.ts" />
 
 interface Newable {
     new(...args: any[]): any
