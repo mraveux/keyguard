@@ -418,9 +418,8 @@ class SignSwapApi extends PolygonRequestParserMixin(BitcoinRequestParserMixin(To
 
 /**
  * @enum {KeyguardRequest.SignSwapRequestLayout}
- * @readonly
  */
-SignSwapApi.Layouts = {
+SignSwapApi.Layouts = Object.freeze({
     STANDARD: /** @type {'standard'} */ ('standard'),
     SLIDER: /** @type {'slider'} */ ('slider'),
-};
+});
