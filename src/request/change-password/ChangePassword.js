@@ -32,17 +32,26 @@ class ChangePassword {
         this._key = null;
 
         // Pages
-        const $enterPassword = /** @type {HTMLFormElement} */ (document.getElementById(ChangePassword.Pages.ENTER_PASSWORD));
-        const $setPassword = /** @type {HTMLFormElement} */ (document.getElementById(ChangePassword.Pages.SET_PASSWORD));
-        const $downloadFile = /** @type {HTMLFormElement} */ (document.getElementById(ChangePassword.Pages.DOWNLOAD_FILE));
+        const $enterPassword = /** @type {HTMLFormElement} */ (
+            document.getElementById(ChangePassword.Pages.ENTER_PASSWORD));
+        const $setPassword = /** @type {HTMLFormElement} */ (
+            document.getElementById(ChangePassword.Pages.SET_PASSWORD));
+        const $downloadFile = /** @type {HTMLFormElement} */ (
+            document.getElementById(ChangePassword.Pages.DOWNLOAD_FILE));
 
         // Elements
-        const $passwordGetter = /** @type {HTMLFormElement} */ ($enterPassword.querySelector('.password-box'));
-        const $passwordSetter = /** @type {HTMLFormElement} */ ($setPassword.querySelector('.password-setter-box'));
-        const $loginFileIcon = /** @type {HTMLDivElement} */ ($setPassword.querySelector('.login-file-icon'));
-        this.$setPasswordBackButton = /** @type {HTMLLinkElement} */ ($setPassword.querySelector('a.page-header-back-button'));
-        const $downloadLoginFile = /** @type {HTMLDivElement} */ ($downloadFile.querySelector('.download-login-file'));
-        this.$skipDownloadButton = /** @type {HTMLLinkElement} */ ($downloadFile.querySelector('.skip'));
+        const $passwordGetter = /** @type {HTMLFormElement} */ (
+            $enterPassword.querySelector('.password-box'));
+        const $passwordSetter = /** @type {HTMLFormElement} */ (
+            $setPassword.querySelector('.password-setter-box'));
+        const $loginFileIcon = /** @type {HTMLDivElement} */ (
+            $setPassword.querySelector('.login-file-icon'));
+        this.$setPasswordBackButton = /** @type {HTMLLinkElement} */ (
+            $setPassword.querySelector('a.page-header-back-button'));
+        const $downloadLoginFile = /** @type {HTMLDivElement} */ (
+            $downloadFile.querySelector('.download-login-file'));
+        this.$skipDownloadButton = /** @type {HTMLLinkElement} */ (
+            $downloadFile.querySelector('.skip'));
 
         // Components
         this._passwordSetter = new PasswordSetterBox($passwordSetter);

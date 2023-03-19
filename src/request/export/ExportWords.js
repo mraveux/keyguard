@@ -38,17 +38,26 @@ class ExportWords extends Nimiq.Observable {
         this._key = null;
 
         // pages
-        this._$noRecoveryPage = /** @type {HTMLElement} */ (document.getElementById(ExportWords.Pages.RECOVERY_WORDS_INTRO));
-        this._$recoveryWordsUnlockPage = /** @type {HTMLElement} */ (document.getElementById(ExportWords.Pages.RECOVERY_WORDS_UNLOCK));
-        this._$recoveryWordsPage = /** @type {HTMLElement} */ (document.getElementById(ExportWords.Pages.SHOW_WORDS));
-        this._$validateWordsPage = /** @type {HTMLElement} */ (document.getElementById(ExportWords.Pages.VALIDATE_WORDS));
+        this._$noRecoveryPage = /** @type {HTMLElement} */ (
+            document.getElementById(ExportWords.Pages.RECOVERY_WORDS_INTRO));
+        this._$recoveryWordsUnlockPage = /** @type {HTMLElement} */ (
+            document.getElementById(ExportWords.Pages.RECOVERY_WORDS_UNLOCK));
+        this._$recoveryWordsPage = /** @type {HTMLElement} */ (
+            document.getElementById(ExportWords.Pages.SHOW_WORDS));
+        this._$validateWordsPage = /** @type {HTMLElement} */ (
+            document.getElementById(ExportWords.Pages.VALIDATE_WORDS));
 
         // elements
-        const $recoveryWordsIntroButton = /** @type {HTMLButtonElement} */ (this._$noRecoveryPage.querySelector('.page-footer > button'));
-        const $wordsPasswordBox = /** @type {HTMLFormElement} */ (this._$recoveryWordsUnlockPage.querySelector('.password-box'));
-        this.$recoveryWords = /** @type {HTMLElement} */ (this._$recoveryWordsPage.querySelector('.recovery-words'));
-        this.$recoveryWordsContinue = /** @type {HTMLButtonElement} */ (this._$recoveryWordsPage.querySelector('button'));
-        const $validateWords = /** @type {HTMLElement} */ (this._$validateWordsPage.querySelector('.validate-words'));
+        const $recoveryWordsIntroButton = /** @type {HTMLButtonElement} */ (
+            this._$noRecoveryPage.querySelector('.page-footer > button'));
+        const $wordsPasswordBox = /** @type {HTMLFormElement} */ (
+            this._$recoveryWordsUnlockPage.querySelector('.password-box'));
+        this.$recoveryWords = /** @type {HTMLElement} */ (
+            this._$recoveryWordsPage.querySelector('.recovery-words'));
+        this.$recoveryWordsContinue = /** @type {HTMLButtonElement} */ (
+            this._$recoveryWordsPage.querySelector('button'));
+        const $validateWords = /** @type {HTMLElement} */ (
+            this._$validateWordsPage.querySelector('.validate-words'));
 
         // components
         this._wordsPasswordBox = new PasswordBox($wordsPasswordBox, {

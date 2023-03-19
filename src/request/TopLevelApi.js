@@ -232,8 +232,10 @@ class TopLevelApi extends RequestParser {
      * @param {string|Parsed<T>} requestOrCustomButtonText
      */
     enableGlobalCloseButton(requestOrCustomButtonText) {
-        const $globalCloseText = /** @type {HTMLElement} */ (document.querySelector('#global-close-text'));
-        const $button = /** @type {HTMLSpanElement} */ ($globalCloseText.parentNode);
+        const $globalCloseText = /** @type {HTMLElement} */ (
+            document.querySelector('#global-close-text'));
+        const $button = /** @type {HTMLSpanElement} */ (
+            $globalCloseText.parentNode);
         if (!$button.classList.contains('display-none')) return;
 
         // eslint-disable-next-line require-jsdoc-except/require-jsdoc
@@ -303,7 +305,8 @@ class TopLevelApi extends RequestParser {
 
     static showNoRequestErrorPage() {
         const errorPage = new NoRequestErrorPage();
-        const $target = /** @type {HTMLDivElement} */ (document.querySelector('#rotation-container') || document.querySelector('#app'));
+        const $target = /** @type {HTMLDivElement} */ (
+            document.querySelector('#rotation-container') || document.querySelector('#app'));
         $target.appendChild(errorPage.getElement());
         window.location.hash = 'error';
         TopLevelApi.setLoading(false);

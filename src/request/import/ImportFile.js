@@ -43,15 +43,16 @@ class ImportFile {
         this.$unlockAccountPage = /** @type {HTMLElement} */ (document.getElementById(ImportFile.Pages.UNLOCK_ACCOUNT));
 
         if (request.isKeyLost) {
-            const $link = /** @type {HTMLElement} */ (this.$importFilePage.querySelector('.login-to-continue'));
+            const $link = /** @type {HTMLElement} */ (
+                this.$importFilePage.querySelector('.login-to-continue'));
             $link.classList.remove('display-none');
         }
 
-        const $fileImport = /** @type {HTMLLabelElement} */ (this.$importFilePage.querySelector('.file-import'));
+        const $fileImport = /** @type {HTMLLabelElement} */ (
+            this.$importFilePage.querySelector('.file-import'));
         const fileImport = new FileImporter($fileImport, false);
 
         this.$qrVideoButton = /** @type {HTMLButtonElement} */ (this.$importFilePage.querySelector('.qr-video-button'));
-
         this.$qrVideoScanner = /** @type {HTMLDivElement} */ (this.$importFilePage.querySelector('.qr-video-scanner'));
         this.qrVideoScanner = new QrVideoScanner(this.$qrVideoScanner, FileImporter.isLoginFileData);
 
@@ -63,9 +64,11 @@ class ImportFile {
             $gotoCreate.addEventListener('click', this._goToCreate.bind(this));
         }
 
-        this.$loginFileImage = /** @type {HTMLImageElement} */ (this.$unlockAccountPage.querySelector('.loginfile-image'));
+        this.$loginFileImage = /** @type {HTMLImageElement} */ (
+            this.$unlockAccountPage.querySelector('.loginfile-image'));
 
-        const $passwordBox = /** @type {HTMLFormElement} */ (this.$unlockAccountPage.querySelector('.password-box'));
+        const $passwordBox = /** @type {HTMLFormElement} */ (
+            this.$unlockAccountPage.querySelector('.password-box'));
         this.passwordBox = new PasswordBox(
             $passwordBox,
             { buttonI18nTag: 'passwordbox-log-in' },

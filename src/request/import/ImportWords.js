@@ -47,15 +47,22 @@ class ImportWords {
         // Pages
         this.$words = /** @type {HTMLFormElement} */ (document.getElementById(ImportWords.Pages.ENTER_WORDS));
         this.$setPassword = /** @type {HTMLFormElement} */ (document.getElementById(ImportWords.Pages.SET_PASSWORD));
-        const $downloadFile = /** @type {HTMLFormElement} */ (document.getElementById(ImportWords.Pages.DOWNLOAD_LOGINFILE));
+        const $downloadFile = /** @type {HTMLFormElement} */ (
+            document.getElementById(ImportWords.Pages.DOWNLOAD_LOGINFILE));
 
         // Elements
-        const $recoveryWords = /** @type {HTMLFormElement} */ (this.$words.querySelector('.recovery-words'));
-        this.$setPasswordBackButton = /** @type {HTMLLinkElement} */ (this.$setPassword.querySelector('a.page-header-back-button'));
-        const $passwordSetter = /** @type {HTMLFormElement} */ (this.$setPassword.querySelector('.password-setter-box'));
-        const $loginFileIcon = /** @type {HTMLDivElement} */ (this.$setPassword.querySelector('.login-file-icon'));
-        const $downloadLoginFile = /** @type {HTMLDivElement} */ ($downloadFile.querySelector('.download-loginfile'));
-        const $skipDownloadButton = /** @type {HTMLLinkElement} */ ($downloadFile.querySelector('.skip'));
+        const $recoveryWords = /** @type {HTMLFormElement} */ (
+            this.$words.querySelector('.recovery-words'));
+        this.$setPasswordBackButton = /** @type {HTMLLinkElement} */ (
+            this.$setPassword.querySelector('a.page-header-back-button'));
+        const $passwordSetter = /** @type {HTMLFormElement} */ (
+            this.$setPassword.querySelector('.password-setter-box'));
+        const $loginFileIcon = /** @type {HTMLDivElement} */ (
+            this.$setPassword.querySelector('.login-file-icon'));
+        const $downloadLoginFile = /** @type {HTMLDivElement} */ (
+            $downloadFile.querySelector('.download-loginfile'));
+        const $skipDownloadButton = /** @type {HTMLLinkElement} */ (
+            $downloadFile.querySelector('.skip'));
 
         // Components
         this._recoveryWords = new RecoveryWords($recoveryWords, true);

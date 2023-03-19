@@ -138,7 +138,8 @@ class PaymentInfoLine { // eslint-disable-line no-unused-vars
             $fiatAmount.textContent = formattedFiatAmount;
         });
 
-        const $vendorMarkupTemplate = /** @type {HTMLTemplateElement} */ ($tooltip.querySelector('.vendor-markup-template'));
+        const $vendorMarkupTemplate = /** @type {HTMLTemplateElement} */ (
+            $tooltip.querySelector('.vendor-markup-template'));
         if (vendorMarkup !== undefined) {
             // Convert to percent and round to two decimals. Always ceil to avoid displaying a lower fee than charged or
             // larger discount than applied. Subtract small epsilon to avoid that numbers get rounded up as a result of

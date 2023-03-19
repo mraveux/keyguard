@@ -308,11 +308,16 @@ class SignSwap {
         if (request.layout === SignSwapApi.Layouts.SLIDER) {
             $swapValues.classList.add(request.direction);
 
-            const $balanceDistributionBar = /** @type {HTMLDivElement} */ (this.$el.querySelector('.balance-distribution-bar'));
-            const $swapLeftValueFiat = /** @type {HTMLSpanElement} */ (this.$el.querySelector('#swap-left-value-fiat'));
-            const $swapRightValueFiat = /** @type {HTMLSpanElement} */ (this.$el.querySelector('#swap-right-value-fiat'));
-            const $swapLeftSymbol = /** @type {HTMLSpanElement} */ (this.$el.querySelector('#swap-left-symbol'));
-            const $swapRightSymbol = /** @type {HTMLSpanElement} */ (this.$el.querySelector('#swap-right-symbol'));
+            const $balanceDistributionBar = /** @type {HTMLDivElement} */ (
+                this.$el.querySelector('.balance-distribution-bar'));
+            const $swapLeftValueFiat = /** @type {HTMLSpanElement} */ (
+                this.$el.querySelector('#swap-left-value-fiat'));
+            const $swapRightValueFiat = /** @type {HTMLSpanElement} */ (
+                this.$el.querySelector('#swap-right-value-fiat'));
+            const $swapLeftSymbol = /** @type {HTMLSpanElement} */ (
+                this.$el.querySelector('#swap-left-symbol'));
+            const $swapRightSymbol = /** @type {HTMLSpanElement} */ (
+                this.$el.querySelector('#swap-right-symbol'));
 
             $swapLeftSymbol.classList.add(`${leftAsset.toLowerCase()}-symbol`);
             $swapRightSymbol.classList.add(`${rightAsset.toLowerCase()}-symbol`);

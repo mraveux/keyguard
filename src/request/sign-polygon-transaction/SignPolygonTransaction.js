@@ -25,7 +25,8 @@ class SignPolygonTransaction {
      * @param {reject} reject
      */
     constructor(request, resolve, reject) {
-        this.$el = /** @type {HTMLElement} */ (document.getElementById(SignPolygonTransaction.Pages.CONFIRM_TRANSACTION));
+        this.$el = /** @type {HTMLElement} */ (
+            document.getElementById(SignPolygonTransaction.Pages.CONFIRM_TRANSACTION));
 
         const relayRequest = request.request;
 

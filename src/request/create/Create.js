@@ -32,22 +32,28 @@ class Create {
 
         FlippableHandler.init();
 
-        const $loginFileFan = /** @type {HTMLDivElement} */ (document.querySelector('.login-file-fan'));
+        const $loginFileFan = /** @type {HTMLDivElement} */ (
+            document.querySelector('.login-file-fan'));
+        const $startButton = /** @type {HTMLButtonElement} */ (
+            document.querySelector('.start'));
 
-        const $startButton = /** @type {HTMLButtonElement} */ (document.querySelector('.start'));
+        this.$loginFileAnimation = /** @type {HTMLDivElement} */ (
+            document.querySelector('.login-file-animation'));
 
-        this.$loginFileAnimation = /** @type {HTMLDivElement} */ (document.querySelector('.login-file-animation'));
+        const $setPassword = /** @type {HTMLFormElement} */ (
+            document.querySelector('.password-box'));
+        this.$setPasswordPage = /** @type {HTMLFormElement} */ (
+            document.getElementById('set-password'));
 
-        const $setPassword = /** @type {HTMLFormElement} */ (document.querySelector('.password-box'));
+        const $downloadFilePage = /** @type {HTMLElement} */ (
+            document.getElementById(Create.Pages.LOGIN_FILE_DOWNLOAD));
+        const $downloadLoginFile = /** @type {HTMLDivElement} */ (
+            document.querySelector('.download-loginfile'));
 
-        this.$setPasswordPage = /** @type {HTMLFormElement} */ (document.getElementById('set-password'));
-
-        const $downloadFilePage = /** @type {HTMLElement} */ (document.getElementById(Create.Pages.LOGIN_FILE_DOWNLOAD));
-        const $downloadLoginFile = /** @type {HTMLDivElement} */ (document.querySelector('.download-loginfile'));
-
-        const $loginFilePreviewImage = /** @type {HTMLImageElement} */ (document.getElementById('loginfile-preview'));
-
-        const $loginFileExplainerBackButton = /** @type {HTMLButtonElement} */ (document.getElementById('loginfile-explainer-go-back'));
+        const $loginFilePreviewImage = /** @type {HTMLImageElement} */ (
+            document.getElementById('loginfile-preview'));
+        const $loginFileExplainerBackButton = /** @type {HTMLButtonElement} */ (
+            document.getElementById('loginfile-explainer-go-back'));
 
         // Create components
         Promise.all([
