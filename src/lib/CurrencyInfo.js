@@ -6,7 +6,7 @@ class CurrencyInfo {
      * @private
      * @param {number} value
      * @param {string | string[]} [locales]
-     * @param {Intl.NumberFormatOptions} [options]
+     * @param {Intl.NumberFormatOptions & { currencyDisplay: string }} [options]
      * @returns {string | null}
      */
     static _failsafeNumberToLocaleString(value, locales, options) {

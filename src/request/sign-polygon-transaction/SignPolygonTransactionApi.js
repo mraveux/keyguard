@@ -64,8 +64,7 @@ class SignPolygonTransactionApi extends PolygonRequestParserMixin(TopLevelApi) {
                 PolygonContractABIs.USDC_TRANSFER_CONTRACT_ABI,
             );
 
-            /** @type {PolygonTransferDescription | PolygonTransferWithApprovalDescription} */
-            description = (usdcTransferContract.interface.parseTransaction({
+            description = /** @type {PolygonTransferDescription | PolygonTransferWithApprovalDescription} */ (usdcTransferContract.interface.parseTransaction({
                 data: request.request.data,
                 value: request.request.value,
             }));
@@ -75,8 +74,7 @@ class SignPolygonTransactionApi extends PolygonRequestParserMixin(TopLevelApi) {
                 PolygonContractABIs.USDC_HTLC_CONTRACT_ABI,
             );
 
-            /** @type {PolygonRefundDescription} */
-            description = (usdcHtlcContract.interface.parseTransaction({
+            description = /** @type {PolygonRefundDescription} */ (usdcHtlcContract.interface.parseTransaction({
                 data: request.request.data,
                 value: request.request.value,
             }));
