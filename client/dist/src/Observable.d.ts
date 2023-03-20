@@ -2,7 +2,7 @@
  * TypeScript port of @nimiq/core/src/main/generic/utils/Observable.js
  */
 export default class Observable {
-    static readonly WILDCARD: string;
+    static get WILDCARD(): string;
     protected _listeners: Map<string, Array<(...args: any) => any>>;
     constructor();
     on<T>(type: string, callback: (arg: T) => any): number;

@@ -10,6 +10,8 @@ export declare enum KeyguardCommand {
     DERIVE_ADDRESS = "derive-address",
     SIGN_BTC_TRANSACTION = "sign-btc-transaction",
     DERIVE_BTC_XPUB = "derive-btc-xpub",
+    SIGN_POLYGON_TRANSACTION = "sign-polygon-transaction",
+    DERIVE_POLYGON_ADDRESS = "derive-polygon-address",
     SIGN_SWAP = "sign-swap",
     LIST = "list",
     HAS_KEYS = "hasKeys",

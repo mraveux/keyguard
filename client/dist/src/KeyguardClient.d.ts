@@ -1,7 +1,7 @@
 import { KeyguardCommand } from './KeyguardCommand';
-import { CreateRequest, DeriveAddressRequest, ImportRequest, RemoveKeyRequest, ResetPasswordRequest, SignTransactionRequest, SignStakingRequest, SignMessageRequest, SimpleRequest, ListLegacyResult, ListResult, SimpleResult, ExportRequest, DerivedAddress, ObjectType, ResultByCommand, SignBtcTransactionRequest, DeriveBtcXPubRequest, SignSwapRequest, SignSwapTransactionsRequest, SignSwapTransactionsResult } from './PublicRequest';
+import { CreateRequest, DeriveAddressRequest, ImportRequest, RemoveKeyRequest, ResetPasswordRequest, SignTransactionRequest, SignStakingRequest, SignMessageRequest, SimpleRequest, ListLegacyResult, ListResult, SimpleResult, ExportRequest, DerivedAddress, ObjectType, ResultByCommand, SignBtcTransactionRequest, DeriveBtcXPubRequest, DerivePolygonAddressRequest, SignPolygonTransactionRequest, SignSwapRequest, SignSwapTransactionsRequest, SignSwapTransactionsResult } from './PublicRequest';
 export declare class KeyguardClient {
-    private static readonly DEFAULT_ENDPOINT;
+    private static get DEFAULT_ENDPOINT();
     private readonly _endpoint;
     private _redirectClient;
     private _observable;
@@ -22,10 +22,12 @@ export declare class KeyguardClient {
     signMessage(request: SignMessageRequest): void;
     signBtcTransaction(request: SignBtcTransactionRequest): void;
     deriveBtcXPub(request: DeriveBtcXPubRequest): void;
+    derivePolygonAddress(request: DerivePolygonAddressRequest): void;
+    signPolygonTransaction(request: SignPolygonTransactionRequest): void;
     signSwap(request: SignSwapRequest): void;
     list(): Promise<ListResult>;
     hasKeys(): Promise<SimpleResult>;
-    deriveAddresses(keyId: string, paths: string[]): Promise<DerivedAddress[]>;
+    deriveAddresses(keyId: string, paths: string[], tmpCookieEncryptionKey?: Uint8Array): Promise<DerivedAddress[]>;
     releaseKey(keyId: string, shouldBeRemoved?: boolean): Promise<SimpleResult>;
     listLegacyAccounts(): Promise<ListLegacyResult>;
     hasLegacyAccounts(): Promise<SimpleResult>;

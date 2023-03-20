@@ -9,7 +9,7 @@ export declare class RequestBehavior {
     private readonly _type;
     constructor(type: BehaviorType);
     request(endpoint: string, command: KeyguardCommand, args: any[]): Promise<void>;
-    readonly type: BehaviorType;
+    get type(): BehaviorType;
 }
 export declare class RedirectRequestBehavior extends RequestBehavior {
     static getRequestUrl(endpoint: string, command: KeyguardCommand): string;
@@ -22,12 +22,12 @@ export declare class RedirectRequestBehavior extends RequestBehavior {
 export declare class IFrameRequestBehavior extends RequestBehavior {
     private _iframe;
     private _client;
-    protected readonly IFRAME_PATH_SUFFIX: string;
+    protected get IFRAME_PATH_SUFFIX(): string;
     constructor();
     request(endpoint: string, command: KeyguardCommand, args: any[]): Promise<any>;
     createIFrame(endpoint: string): Promise<HTMLIFrameElement>;
 }
 export declare class SwapIFrameRequestBehavior extends IFrameRequestBehavior {
-    protected readonly IFRAME_PATH_SUFFIX: string;
+    protected get IFRAME_PATH_SUFFIX(): string;
 }
 export {};

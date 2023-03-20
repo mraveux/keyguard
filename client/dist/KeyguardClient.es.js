@@ -101,6 +101,9 @@ var KeyguardCommand;
     // Bitcoin
     KeyguardCommand["SIGN_BTC_TRANSACTION"] = "sign-btc-transaction";
     KeyguardCommand["DERIVE_BTC_XPUB"] = "derive-btc-xpub";
+    // Polygon
+    KeyguardCommand["SIGN_POLYGON_TRANSACTION"] = "sign-polygon-transaction";
+    KeyguardCommand["DERIVE_POLYGON_ADDRESS"] = "derive-polygon-address";
     // Swap
     KeyguardCommand["SIGN_SWAP"] = "sign-swap";
     // Iframe requests
@@ -265,6 +268,12 @@ class KeyguardClient {
     deriveBtcXPub(request) {
         this._redirectRequest(KeyguardCommand.DERIVE_BTC_XPUB, request);
     }
+    derivePolygonAddress(request) {
+        this._redirectRequest(KeyguardCommand.DERIVE_POLYGON_ADDRESS, request);
+    }
+    signPolygonTransaction(request) {
+        this._redirectRequest(KeyguardCommand.SIGN_POLYGON_TRANSACTION, request);
+    }
     signSwap(request) {
         this._redirectRequest(KeyguardCommand.SIGN_SWAP, request);
     }
@@ -275,8 +284,8 @@ class KeyguardClient {
     async hasKeys() {
         return this._iframeRequest(KeyguardCommand.HAS_KEYS);
     }
-    async deriveAddresses(keyId, paths) {
-        return this._iframeRequest(KeyguardCommand.DERIVE_ADDRESSES, { keyId, paths });
+    async deriveAddresses(keyId, paths, tmpCookieEncryptionKey) {
+        return this._iframeRequest(KeyguardCommand.DERIVE_ADDRESSES, { keyId, paths, tmpCookieEncryptionKey });
     }
     async releaseKey(keyId, shouldBeRemoved = false) {
         return this._iframeRequest(KeyguardCommand.RELEASE_KEY, { keyId, shouldBeRemoved });
