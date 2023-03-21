@@ -1,16 +1,15 @@
-/* global IdenticonSelector */
+/* global Nimiq */
 /* global PasswordSetterBox */
 /* global Key */
 /* global KeyStore */
-/* global ProgressIndicator */
 /* global Utf8Tools */
 /* global TopLevelApi */
-/* global Identicon */
+/* global LoginFile */
 /* global BitcoinKey */
+/* global PolygonKey */
 /* global IqonHash */
 /* global LoginFileAnimation */
 /* global DownloadLoginFile */
-/* global I18n */
 /* global FlippableHandler */
 /* global LoginFileConfig */
 
@@ -21,7 +20,7 @@
 
 class Create {
     /**
-     * @param {KeyguardRequest.CreateRequest} request
+     * @param {Parsed<KeyguardRequest.CreateRequest>} request
      * @param {Create.resolve} resolve
      * @param {reject} reject
      */
@@ -33,80 +32,71 @@ class Create {
 
         FlippableHandler.init();
 
-        /** @type {HTMLDivElement} */
-        this.$identiconSelector = (document.querySelector('.identicon-selector'));
+        const $loginFileFan = /** @type {HTMLDivElement} */ (
+            document.querySelector('.login-file-fan'));
+        const $startButton = /** @type {HTMLButtonElement} */ (
+            document.querySelector('.start'));
 
-        /** @type {HTMLDivElement} */
-        const $overlayContainer = (document.querySelector('.overlay-container'));
+        this.$loginFileAnimation = /** @type {HTMLDivElement} */ (
+            document.querySelector('.login-file-animation'));
 
-        /** @type {HTMLButtonElement} */
-        const $overlayCloseButton = (document.querySelector('.overlay-container .overlay .close-overlay'));
+        const $setPassword = /** @type {HTMLFormElement} */ (
+            document.querySelector('.password-box'));
+        this.$setPasswordPage = /** @type {HTMLFormElement} */ (
+            document.getElementById('set-password'));
 
-        /** @type {HTMLButtonElement} */
-        const $confirmAddressButton = (document.querySelector('.confirm-address'));
+        const $downloadFilePage = /** @type {HTMLElement} */ (
+            document.getElementById(Create.Pages.LOGIN_FILE_DOWNLOAD));
+        const $downloadLoginFile = /** @type {HTMLDivElement} */ (
+            document.querySelector('.download-loginfile'));
 
-        /** @type {HTMLDivElement} */
-        this.$loginFileAnimation = (document.querySelector('.login-file-animation'));
-
-        /** @type {HTMLFormElement} */
-        const $setPassword = (document.querySelector('.password-box'));
-
-        /** @type {HTMLFormElement} */
-        this.$setPasswordPage = (document.getElementById('set-password'));
-
-        /** @type {HTMLElement} */
-        const $downloadFilePage = (document.getElementById(Create.Pages.LOGIN_FILE_DOWNLOAD));
-        /** @type {HTMLDivElement} */
-        const $downloadLoginFile = (document.querySelector('.download-loginfile'));
-
-        /** @type {HTMLImageElement} */
-        const $loginFilePreviewImage = (document.getElementById('loginfile-preview'));
-
-        /** @type {HTMLButtonElement} */
-        const $loginFileExplainerBackButton = (document.getElementById('loginfile-explainer-go-back'));
+        const $loginFilePreviewImage = /** @type {HTMLImageElement} */ (
+            document.getElementById('loginfile-preview'));
+        const $loginFileExplainerBackButton = /** @type {HTMLButtonElement} */ (
+            document.getElementById('loginfile-explainer-go-back'));
 
         // Create components
+        Promise.all([
+            new LoginFile('hello world', 2).toObjectUrl(),
+            new LoginFile('hello world', 0).toObjectUrl(),
+            new LoginFile('hello world', 7).toObjectUrl(),
+            new LoginFile('hello world', 8).toObjectUrl(),
+            new LoginFile('hello world', 6).toObjectUrl(),
+        ]).then(objectUrls => {
+            /** @type {HTMLImageElement=} */
+            let prevImage;
+            for (const objectUrl of objectUrls) {
+                const image = new Image();
+                image.src = objectUrl;
 
-        this._identiconSelector = new IdenticonSelector(this.$identiconSelector, request.defaultKeyPath);
+                // Insert elements behind each other, to not create a flicker
+                // when the images are appended after each other
+                if (prevImage) $loginFileFan.insertBefore(image, prevImage);
+                else $loginFileFan.appendChild(image);
+                prevImage = image;
+            }
+        });
+
         this._loginFileAnimation = new LoginFileAnimation(this.$loginFileAnimation);
         this._passwordSetter = new PasswordSetterBox($setPassword, { buttonI18nTag: 'passwordbox-confirm-create' });
-        this._downloadLoginFile = new DownloadLoginFile(
-            $downloadLoginFile,
-            I18n.translatePhrase('create-loginfile-any-device'),
-        );
-        // Set up progress indicators
-        /* eslint-disable no-new */
-        new ProgressIndicator(document.querySelector(`#${Create.Pages.CHOOSE_IDENTICON} .progress-indicator`), 3, 1);
-        new ProgressIndicator(document.querySelector(`#${Create.Pages.SET_PASSWORD} .progress-indicator`), 3, 2);
-        new ProgressIndicator(document.querySelector(`#${Create.Pages.LOGIN_FILE_DOWNLOAD} .progress-indicator`), 3, 3);
-        /* eslint-enable no-new */
+        this._downloadLoginFile = new DownloadLoginFile($downloadLoginFile);
+
+        // Generate key
+        this._entropy = Nimiq.Entropy.generate();
+        const masterKey = this._entropy.toExtendedPrivateKey();
+        const extPrivKey = masterKey.derivePath(request.defaultKeyPath);
+        const address = extPrivKey.toAddress().toUserFriendlyAddress();
+
+        const colorIndex = IqonHash.getBackgroundColorIndex(address);
+        $loginFilePreviewImage.classList.add(LoginFileConfig[colorIndex].className);
 
         // Wire up logic
 
-        this._identiconSelector.on(
-            IdenticonSelector.Events.IDENTICON_SELECTED,
-            /**
-             * @param {Nimiq.Entropy} entropy
-             * @param {string} address
-            */
-            (entropy, address) => {
-                this._selectedEntropy = entropy;
-                this._selectedAddress = address;
-
-                // eslint-disable-next-line no-new
-                new Identicon(
-                    address,
-                    /** @type {HTMLDivElement} */($overlayContainer.querySelector('#identicon')),
-                );
-
-                /** @type {HTMLDivElement} */
-                const $address = ($overlayContainer.querySelector('#address'));
-                // last space is necessary for the rendering to work properly with white-space: pre-wrap.
-                $address.textContent = `${address} `;
-
-                window.location.hash = Create.Pages.CONFIRM_IDENTICON;
-            },
-        );
+        $startButton.addEventListener('click', () => {
+            window.location.hash = Create.Pages.SET_PASSWORD;
+            this._passwordSetter.reset();
+            TopLevelApi.focusPasswordBox();
+        });
 
         this._downloadLoginFile.on(DownloadLoginFile.Events.INITIATED, () => {
             $downloadFilePage.classList.add(DownloadLoginFile.Events.INITIATED);
@@ -120,19 +110,11 @@ class Create {
             this.finish(request);
         });
 
-        $overlayCloseButton.addEventListener('click', () => window.history.back());
-
-        $confirmAddressButton.addEventListener('click', () => {
-            window.location.hash = Create.Pages.SET_PASSWORD;
-            this._passwordSetter.reset();
-            TopLevelApi.focusPasswordBox();
-        });
-
         this._passwordSetter.on(PasswordSetterBox.Events.SUBMIT, /** @param {string} password */ async password => {
             this._password = password;
 
             // Set up LoginFile
-            const key = new Key(this._selectedEntropy);
+            const key = new Key(this._entropy);
             const passwordBuffer = Utf8Tools.stringToUtf8ByteArray(password);
             const encryptedSecret = await key.secret.exportEncrypted(passwordBuffer);
 
@@ -145,9 +127,7 @@ class Create {
 
         this._passwordSetter.on(PasswordSetterBox.Events.ENTERED, () => {
             this.$setPasswordPage.classList.add('repeat-password');
-            const colorIndex = IqonHash.getBackgroundColorIndex(this._selectedAddress);
             this._loginFileAnimation.setColor(colorIndex);
-            $loginFilePreviewImage.classList.add(LoginFileConfig[colorIndex].className);
         });
 
         this._passwordSetter.on(PasswordSetterBox.Events.RESET, this.backToEnterPassword.bind(this));
@@ -158,7 +138,7 @@ class Create {
 
         if (request.enableBackArrow) {
             /** @type {HTMLElement} */
-            (document.querySelector('#choose-identicon .page-header-back-button')).classList.remove('display-none');
+            (document.querySelector('#login-file-selection .page-header-back-button')).classList.remove('display-none');
         }
     } // constructor
 
@@ -171,15 +151,16 @@ class Create {
     }
 
     /**
-     * @param {KeyguardRequest.CreateRequest} request
+     * @param {Parsed<KeyguardRequest.CreateRequest>} request
      */
     async finish(request) {
         TopLevelApi.setLoading(true);
-        const key = new Key(this._selectedEntropy);
+        const key = new Key(this._entropy);
         const password = this._password.length > 0 ? Utf8Tools.stringToUtf8ByteArray(this._password) : undefined;
         await KeyStore.instance.put(key, password);
 
         const keyPath = request.defaultKeyPath;
+        const polygonKeypath = `${request.polygonAccountPath}/0/0`;
 
         /** @type {KeyguardRequest.KeyResult} */
         const result = [{
@@ -192,6 +173,10 @@ class Create {
             fileExported: true,
             wordsExported: false,
             bitcoinXPub: new BitcoinKey(key).deriveExtendedPublicKey(request.bitcoinXPubPath),
+            polygonAddresses: [{
+                address: new PolygonKey(key).deriveAddress(polygonKeypath),
+                keyPath: polygonKeypath,
+            }],
         }];
 
         this._resolve(result);
@@ -199,14 +184,12 @@ class Create {
 
     run() {
         // go to start page
-        window.location.hash = Create.Pages.CHOOSE_IDENTICON;
-        this._identiconSelector.generateIdenticons();
+        window.location.hash = Create.Pages.LOGIN_FILE_SELECTION;
     }
 }
 
 Create.Pages = {
-    CHOOSE_IDENTICON: 'choose-identicon',
-    CONFIRM_IDENTICON: 'confirm-identicon',
+    LOGIN_FILE_SELECTION: 'login-file-selection',
     SET_PASSWORD: 'set-password',
     LOGIN_FILE_DOWNLOAD: 'login-file-download',
     LOGIN_FILE_EXPLAINER: 'login-file-explainer',

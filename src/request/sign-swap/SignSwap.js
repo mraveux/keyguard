@@ -9,6 +9,11 @@
 /* global BitcoinConstants */
 /* global BitcoinUtils */
 /* global BitcoinKey */
+/* global PolygonUtils */
+/* global PolygonConstants */
+/* global PolygonContractABIs */
+/* global PolygonKey */
+/* global ethers */
 /* global EuroConstants */
 /* global EuroUtils */
 /* global Identicon */
@@ -19,6 +24,7 @@
 /* global BalanceDistributionBar */
 /* global Constants */
 /* global NonPartitionedSessionStorage */
+/* global CONFIG */
 
 /**
  * @callback SignSwap.resolve
@@ -33,42 +39,35 @@ class SignSwap {
      */
     constructor(request, resolve, reject) {
         this._request = request;
-        /** @type {HTMLElement} */
-        this.$el = (document.getElementById(SignSwap.Pages.CONFIRM_SWAP));
+        this.$el = /** @type {HTMLElement} */ (document.getElementById(SignSwap.Pages.CONFIRM_SWAP));
 
         const fundTx = request.fund;
         const redeemTx = request.redeem;
 
         // Remove unused layout HTML before getting DOM nodes
         if (request.layout === SignSwapApi.Layouts.STANDARD) {
-            /** @type {HTMLDivElement} */
-            const sliderLayout = (this.$el.querySelector('.layout-slider'));
+            const sliderLayout = /** @type {HTMLDivElement} */ (this.$el.querySelector('.layout-slider'));
             this.$el.removeChild(sliderLayout);
         }
         if (request.layout === SignSwapApi.Layouts.SLIDER) {
-            /** @type {HTMLDivElement} */
-            const standardLayout = (this.$el.querySelector('.layout-standard'));
+            const standardLayout = /** @type {HTMLDivElement} */ (this.$el.querySelector('.layout-standard'));
             this.$el.removeChild(standardLayout);
         }
 
         this.$el.classList.add(`layout-${request.layout}`);
 
-        /** @type {HTMLDivElement} */
-        const $exchangeRate = (this.$el.querySelector('#exchange-rate'));
-        /** @type {HTMLDivElement} */
-        const $leftIdenticon = (this.$el.querySelector('.left-account .identicon'));
-        /** @type {HTMLDivElement} */
-        const $rightIdenticon = (this.$el.querySelector('.right-account .identicon'));
-        /** @type {HTMLSpanElement} */
-        const $leftLabel = (this.$el.querySelector('.left-account .label'));
-        /** @type {HTMLSpanElement} */
-        const $rightLabel = (this.$el.querySelector('.right-account .label'));
-        /** @type {HTMLDivElement} */
-        const $swapValues = (this.$el.querySelector('.swap-values'));
-        /** @type {HTMLSpanElement} */
-        const $swapLeftValue = (this.$el.querySelector('#swap-nim-value'));
-        /** @type {HTMLSpanElement} */
-        const $swapRightValue = (this.$el.querySelector('#swap-btc-value'));
+        const $exchangeRate = /** @type {HTMLDivElement} */ (this.$el.querySelector('#exchange-rate'));
+        const $leftAccount = /** @type {HTMLDivElement} */ (this.$el.querySelector('.left-account'));
+        const $rightAccount = /** @type {HTMLDivElement} */ (this.$el.querySelector('.right-account'));
+        const $leftIdenticon = /** @type {HTMLDivElement} */ ($leftAccount.querySelector('.identicon'));
+        const $rightIdenticon = /** @type {HTMLDivElement} */ ($rightAccount.querySelector('.identicon'));
+        const $leftLabel = /** @type {HTMLSpanElement} */ ($leftAccount.querySelector('.label'));
+        const $rightLabel = /** @type {HTMLSpanElement} */ ($rightAccount.querySelector('.label'));
+        const $leftNewBalance = /** @type {HTMLSpanElement} */ ($leftAccount.querySelector('.new-balance'));
+        const $rightNewBalance = /** @type {HTMLDivElement} */ ($rightAccount.querySelector('.new-balance'));
+        const $swapValues = /** @type {HTMLDivElement} */ (this.$el.querySelector('.swap-values'));
+        const $swapLeftValue = /** @type {HTMLSpanElement} */ (this.$el.querySelector('#swap-left-value'));
+        const $swapRightValue = /** @type {HTMLSpanElement} */ (this.$el.querySelector('#swap-right-value'));
 
         // The total amount the user loses
         let swapFromValue = 0;
@@ -76,6 +75,8 @@ class SignSwap {
             case 'NIM': swapFromValue = fundTx.transaction.value + fundTx.transaction.fee; break;
             case 'BTC': swapFromValue = fundTx.inputs.reduce((sum, input) => sum + input.witnessUtxo.value, 0)
                     - (fundTx.changeOutput ? fundTx.changeOutput.value : 0); break;
+            case 'USDC': swapFromValue = fundTx.description.args.amount
+                .add(fundTx.description.args.fee).toNumber(); break;
             case 'EUR': swapFromValue = fundTx.amount + fundTx.fee; break;
             default: throw new Errors.KeyguardError('Invalid asset');
         }
@@ -85,37 +86,42 @@ class SignSwap {
         switch (redeemTx.type) {
             case 'NIM': swapToValue = redeemTx.transaction.value; break;
             case 'BTC': swapToValue = redeemTx.output.value; break;
+            case 'USDC': swapToValue = redeemTx.amount; break;
             case 'EUR': swapToValue = redeemTx.amount - redeemTx.fee; break;
             default: throw new Errors.KeyguardError('Invalid asset');
         }
 
-        const leftAsset = request.layout === SignSwapApi.Layouts.SLIDER ? 'NIM' : fundTx.type;
-        const rightAsset = request.layout === SignSwapApi.Layouts.SLIDER ? 'BTC' : redeemTx.type;
+        const leftAsset = request.layout === SignSwapApi.Layouts.SLIDER
+            ? request.direction === 'left-to-right' ? request.fund.type : request.redeem.type
+            : fundTx.type;
+        const rightAsset = request.layout === SignSwapApi.Layouts.SLIDER
+            ? request.direction === 'right-to-left' ? request.fund.type : request.redeem.type
+            : redeemTx.type;
 
         const leftAmount = fundTx.type === leftAsset ? swapFromValue : swapToValue;
         const rightAmount = redeemTx.type === rightAsset ? swapToValue : swapFromValue;
 
         $swapLeftValue.textContent = NumberFormatting.formatNumber(
             this._unitsToCoins(leftAsset, leftAmount),
-            this._assetDecimals(leftAsset),
-            leftAsset === 'EUR' ? this._assetDecimals(leftAsset) : 0,
+            leftAsset === 'USDC' ? 2 : this._assetDecimals(leftAsset),
+            leftAsset === 'EUR' || leftAsset === 'USDC' ? 2 : 0,
         );
 
         $swapRightValue.textContent = NumberFormatting.formatNumber(
             this._unitsToCoins(rightAsset, rightAmount),
-            this._assetDecimals(rightAsset),
-            rightAsset === 'EUR' ? this._assetDecimals(rightAsset) : 0,
+            rightAsset === 'USDC' ? 2 : this._assetDecimals(rightAsset),
+            rightAsset === 'EUR' || rightAsset === 'USDC' ? 2 : 0,
         );
 
         $swapValues.classList.add(`${fundTx.type.toLowerCase()}-to-${redeemTx.type.toLowerCase()}`);
 
-        /** @type {'NIM' | 'BTC' | 'EUR'} */
+        /** @type {'NIM' | 'BTC' | 'USDC' | 'EUR'} */
         let exchangeBaseAsset;
         // If EUR is part of the swap, the other currency is the base asset
         if (fundTx.type === 'EUR') exchangeBaseAsset = redeemTx.type;
         else if (redeemTx.type === 'EUR') exchangeBaseAsset = fundTx.type;
-        // If NIM is part of the swap, it is the base asset
-        else if (fundTx.type === 'NIM' || redeemTx.type === 'NIM') exchangeBaseAsset = 'NIM';
+        // If the layout is 'slider', the left asset is the base asset
+        else if (request.layout === SignSwapApi.Layouts.SLIDER) exchangeBaseAsset = leftAsset;
         else exchangeBaseAsset = fundTx.type;
 
         const exchangeOtherAsset = exchangeBaseAsset === fundTx.type ? redeemTx.type : fundTx.type;
@@ -143,6 +149,17 @@ class SignSwap {
                         // When the user redeems BTC, the service lost the HTLC balance + their network fee.
                         // The HTLC balance is represented by the redeeming tx input value.
                         ? redeemTx.input.witnessUtxo.value + request.redeemFees.funding
+                        : 0; // Should never happen, if parsing works correctly
+                break;
+            case 'USDC':
+                exchangeBaseValue = fundTx.type === 'USDC'
+                    // When the user funds USDC, the service receives the HTLC balance - their network fee.
+                    ? fundTx.description.args.amount.toNumber() - request.fundFees.redeeming
+                    : redeemTx.type === 'USDC'
+                        // When the user redeems USDC, the service lost the HTLC balance + their network fee.
+                        // The transaction value is "HTLC balance - tx fee", therefore the "HTLC balance"
+                        // is the transaction value + tx fee.
+                        ? redeemTx.amount + redeemTx.description.args.fee.toNumber() + request.redeemFees.funding
                         : 0; // Should never happen, if parsing works correctly
                 break;
             case 'EUR':
@@ -180,6 +197,17 @@ class SignSwap {
                         ? redeemTx.input.witnessUtxo.value + request.redeemFees.funding
                         : 0; // Should never happen, if parsing works correctly
                 break;
+            case 'USDC':
+                exchangeOtherValue = fundTx.type === 'USDC'
+                    // When the user funds USDC, the service receives the HTLC balance - their network fee.
+                    ? fundTx.description.args.amount.toNumber() - request.fundFees.redeeming
+                    : redeemTx.type === 'USDC'
+                        // When the user redeems USDC, the service lost the HTLC balance + their network fee.
+                        // The transaction value is "HTLC balance - tx fee", therefore the "HTLC balance"
+                        // is the transaction value + tx fee.
+                        ? redeemTx.amount + redeemTx.description.args.fee.toNumber() + request.redeemFees.funding
+                        : 0; // Should never happen, if parsing works correctly
+                break;
             case 'EUR':
                 exchangeOtherValue = fundTx.type === 'EUR'
                     ? fundTx.amount - request.fundFees.redeeming
@@ -201,14 +229,24 @@ class SignSwap {
 
         const exchangeRate = this._unitsToCoins(exchangeOtherAsset, exchangeOtherValue)
             / this._unitsToCoins(exchangeBaseAsset, exchangeBaseValue);
-        $exchangeRate.textContent = `1 ${exchangeBaseAsset} = ${NumberFormatting.formatCurrency(
-            exchangeRate,
-            exchangeOtherAsset.toLocaleLowerCase(),
-            0.01,
-        )}`;
 
-        /** @type {HTMLDivElement} */
-        const $topRow = (this.$el.querySelector('.nq-notice'));
+        // Make sure to show enough decimals
+        const exchangeRateDigitsLength = exchangeRate
+            .toFixed(this._assetDecimals(exchangeOtherAsset) + 1)
+            .split('.')[0]
+            .replace('0', '')
+            .length;
+        const exchangeRateDecimals = Math.max(
+            0,
+            this._assetDecimals(exchangeOtherAsset) - exchangeRateDigitsLength,
+        );
+        $exchangeRate.textContent = `1 ${exchangeBaseAsset} = ${NumberFormatting.formatNumber(
+            exchangeRate,
+            exchangeRateDecimals,
+            exchangeOtherAsset === 'EUR' ? this._assetDecimals(exchangeOtherAsset) : 0,
+        )} ${exchangeOtherAsset}`;
+
+        const $topRow = /** @type {HTMLDivElement} */ (this.$el.querySelector('.nq-notice'));
         $topRow.appendChild(
             new SwapFeesTooltip(
                 request,
@@ -218,19 +256,12 @@ class SignSwap {
         );
 
         if (request.layout === SignSwapApi.Layouts.STANDARD) {
-            /** @type {HTMLDivElement} */
-            const $leftAccount = (this.$el.querySelector('.left-account'));
-            /** @type {HTMLDivElement} */
-            const $rightAccount = (this.$el.querySelector('.right-account'));
-
             $leftAccount.classList.add(request.fund.type.toLocaleLowerCase());
             $rightAccount.classList.add(request.redeem.type.toLocaleLowerCase());
 
             // Add ticker symbols
-            /** @type {HTMLSpanElement} */
-            const $fromSymbol = (this.$el.querySelector('.swap-values .from-symbol'));
-            /** @type {HTMLSpanElement} */
-            const $toSymbol = (this.$el.querySelector('.swap-values .to-symbol'));
+            const $fromSymbol = /** @type {HTMLSpanElement} */ (this.$el.querySelector('.swap-values .from-symbol'));
+            const $toSymbol = /** @type {HTMLSpanElement} */ (this.$el.querySelector('.swap-values .to-symbol'));
 
             $fromSymbol.classList.add(`${request.fund.type.toLowerCase()}-symbol`);
             $toSymbol.classList.add(`${request.redeem.type.toLowerCase()}-symbol`);
@@ -242,6 +273,9 @@ class SignSwap {
             } else if (request.fund.type === 'BTC') {
                 $leftIdenticon.innerHTML = TemplateTags.hasVars(0)`<img src="../../assets/icons/bitcoin.svg"></img>`;
                 $leftLabel.textContent = I18n.translatePhrase('bitcoin');
+            } else if (request.fund.type === 'USDC') {
+                $leftIdenticon.innerHTML = TemplateTags.hasVars(0)`<img src="../../assets/icons/usdc.svg"></img>`;
+                $leftLabel.textContent = I18n.translatePhrase('usd-coin');
             } else if (request.fund.type === 'EUR') {
                 $leftIdenticon.innerHTML = TemplateTags.hasVars(0)`<img src="../../assets/icons/bank.svg"></img>`;
                 $leftLabel.textContent = request.fund.bankLabel || I18n.translatePhrase('sign-swap-your-bank');
@@ -254,6 +288,9 @@ class SignSwap {
             } else if (request.redeem.type === 'BTC') {
                 $rightIdenticon.innerHTML = TemplateTags.hasVars(0)`<img src="../../assets/icons/bitcoin.svg"></img>`;
                 $rightLabel.textContent = I18n.translatePhrase('bitcoin');
+            } else if (request.redeem.type === 'USDC') {
+                $rightIdenticon.innerHTML = TemplateTags.hasVars(0)`<img src="../../assets/icons/usdc.svg"></img>`;
+                $rightLabel.textContent = I18n.translatePhrase('usd-coin');
             } else if (request.redeem.type === 'EUR') {
                 $rightIdenticon.innerHTML = TemplateTags.hasVars(0)`<img src="../../assets/icons/bank.svg"></img>`;
 
@@ -269,36 +306,49 @@ class SignSwap {
         }
 
         if (request.layout === SignSwapApi.Layouts.SLIDER) {
-            /** @type {HTMLDivElement} */
-            const $balanceDistributionBar = (this.$el.querySelector('.balance-distribution-bar'));
-            /** @type {HTMLSpanElement} */
-            const $newNimBalance = (this.$el.querySelector('#new-nim-balance'));
-            /** @type {HTMLSpanElement} */
-            const $newBtcBalance = (this.$el.querySelector('#new-btc-balance'));
-            /** @type {HTMLSpanElement} */
-            const $newNimBalanceFiat = (this.$el.querySelector('#new-nim-balance-fiat'));
-            /** @type {HTMLSpanElement} */
-            const $newBtcBalanceFiat = (this.$el.querySelector('#new-btc-balance-fiat'));
-            /** @type {HTMLSpanElement} */
-            const $swapLeftValueFiat = (this.$el.querySelector('#swap-nim-value-fiat'));
-            /** @type {HTMLSpanElement} */
-            const $swapRightValueFiat = (this.$el.querySelector('#swap-btc-value-fiat'));
+            $swapValues.classList.add(request.direction);
 
-            const swapNimAddress = fundTx.type === 'NIM'
-                ? fundTx.transaction.sender.toUserFriendlyAddress()
-                : redeemTx.type === 'NIM'
-                    ? redeemTx.transaction.recipient.toUserFriendlyAddress()
-                    : ''; // Should never happen, if parsing works correctly
+            const $balanceDistributionBar = /** @type {HTMLDivElement} */ (
+                this.$el.querySelector('.balance-distribution-bar'));
+            const $swapLeftValueFiat = /** @type {HTMLSpanElement} */ (
+                this.$el.querySelector('#swap-left-value-fiat'));
+            const $swapRightValueFiat = /** @type {HTMLSpanElement} */ (
+                this.$el.querySelector('#swap-right-value-fiat'));
+            const $swapLeftSymbol = /** @type {HTMLSpanElement} */ (
+                this.$el.querySelector('#swap-left-symbol'));
+            const $swapRightSymbol = /** @type {HTMLSpanElement} */ (
+                this.$el.querySelector('#swap-right-symbol'));
 
-            new Identicon(swapNimAddress, $leftIdenticon); // eslint-disable-line no-new
-            $leftLabel.textContent = fundTx.type === 'NIM'
-                ? fundTx.senderLabel
-                : redeemTx.type === 'NIM'
-                    ? redeemTx.recipientLabel
-                    : ''; // Should never happen, if parsing works correctly
+            $swapLeftSymbol.classList.add(`${leftAsset.toLowerCase()}-symbol`);
+            $swapRightSymbol.classList.add(`${rightAsset.toLowerCase()}-symbol`);
 
-            $rightIdenticon.innerHTML = TemplateTags.hasVars(0)`<img src="../../assets/icons/bitcoin.svg"></img>`;
-            $rightLabel.textContent = I18n.translatePhrase('bitcoin');
+            if (leftAsset === 'NIM' || rightAsset === 'NIM') {
+                const swapNimAddress = fundTx.type === 'NIM'
+                    ? fundTx.transaction.sender.toUserFriendlyAddress()
+                    : redeemTx.type === 'NIM'
+                        ? redeemTx.transaction.recipient.toUserFriendlyAddress()
+                        : ''; // Should never happen, if parsing works correctly
+
+                // eslint-disable-next-line no-new
+                new Identicon(swapNimAddress, leftAsset === 'NIM' ? $leftIdenticon : $rightIdenticon);
+                (leftAsset === 'NIM' ? $leftLabel : $rightLabel).textContent = fundTx.type === 'NIM'
+                    ? fundTx.senderLabel
+                    : redeemTx.type === 'NIM'
+                        ? redeemTx.recipientLabel
+                        : ''; // Should never happen, if parsing works correctly
+            }
+
+            if (leftAsset === 'BTC' || rightAsset === 'BTC') {
+                (leftAsset === 'BTC' ? $leftIdenticon : $rightIdenticon)
+                    .innerHTML = TemplateTags.hasVars(0)`<img src="../../assets/icons/bitcoin.svg"></img>`;
+                (leftAsset === 'BTC' ? $leftLabel : $rightLabel).textContent = I18n.translatePhrase('bitcoin');
+            }
+
+            if (leftAsset === 'USDC' || rightAsset === 'USDC') {
+                (leftAsset === 'USDC' ? $leftIdenticon : $rightIdenticon)
+                    .innerHTML = TemplateTags.hasVars(0)`<img src="../../assets/icons/usdc.svg"></img>`;
+                (leftAsset === 'USDC' ? $leftLabel : $rightLabel).textContent = I18n.translatePhrase('usd-coin');
+            }
 
             // Add signs in front of swap amounts
             $swapLeftValue.textContent = `${fundTx.type === leftAsset ? '-' : '+'}\u2009`
@@ -318,37 +368,118 @@ class SignSwap {
                 request.fiatCurrency,
             );
 
-            const nimAddressInfo = request.nimiqAddresses.find(address => address.address === swapNimAddress);
-            if (!nimAddressInfo) {
-                throw new Errors.KeyguardError('UNEXPECTED: Address info of swap NIM address not found');
+            /** @typedef {{address: string, balance: number, active: boolean, newBalance: number}} Segment */
+
+            /** @type {Segment[] | undefined} */
+            let leftSegments;
+            /** @type {Segment[] | undefined} */
+            let rightSegments;
+
+            if (leftAsset === 'NIM' || rightAsset === 'NIM') {
+                const activeAddress = fundTx.type === 'NIM'
+                    ? fundTx.transaction.sender.toUserFriendlyAddress()
+                    : redeemTx.type === 'NIM'
+                        ? redeemTx.transaction.recipient.toUserFriendlyAddress()
+                        : ''; // Should never happen, if parsing works correctly
+
+                const activeAddressInfo = request.nimiqAddresses.find(ai => ai.address === activeAddress);
+                if (!activeAddressInfo) {
+                    throw new Errors.KeyguardError('UNEXPECTED: Address info of swap NIM address not found');
+                }
+
+                const amount = leftAsset === 'NIM' ? leftAmount : rightAmount;
+
+                const newBalance = activeAddressInfo.balance + (amount * (fundTx.type === 'NIM' ? -1 : 1));
+                const newBalanceFormatted = NumberFormatting.formatNumber(this._unitsToCoins('NIM', newBalance), 0, 0);
+
+                if (leftAsset === 'NIM') {
+                    $leftNewBalance.textContent = `${newBalanceFormatted} NIM`;
+                    $leftAccount.classList.add('nim');
+                } else if (rightAsset === 'NIM') {
+                    $rightNewBalance.textContent = `${newBalanceFormatted} NIM`;
+                    $rightAccount.classList.add('nim');
+                }
+
+                /** @type {Segment[]} */
+                const segments = request.nimiqAddresses.map(({ address, balance }) => ({
+                    address,
+                    balance,
+                    active: address === activeAddress,
+                    newBalance: address === activeAddress ? newBalance : balance,
+                }));
+
+                if (leftAsset === 'NIM') leftSegments = segments;
+                else rightSegments = segments;
             }
 
-            const newNimBalance = nimAddressInfo.balance + (leftAmount * (fundTx.type === 'NIM' ? -1 : 1));
-            const newBtcBalance = request.bitcoinAccount.balance + (rightAmount * (fundTx.type === 'BTC' ? -1 : 1));
+            if (leftAsset === 'BTC' || rightAsset === 'BTC') {
+                const amount = leftAsset === 'BTC' ? leftAmount : rightAmount;
 
-            $newNimBalance.textContent = NumberFormatting.formatNumber(Nimiq.Policy.lunasToCoins(newNimBalance));
-            $newNimBalanceFiat.textContent = NumberFormatting.formatCurrency(
-                Nimiq.Policy.lunasToCoins(newNimBalance) * leftFiatRate,
-                request.fiatCurrency,
-            );
-            $newBtcBalance.textContent = NumberFormatting.formatNumber(BitcoinUtils.satoshisToCoins(newBtcBalance), 8);
-            const newBtcBalanceFiat = BitcoinUtils.satoshisToCoins(newBtcBalance) * rightFiatRate;
-            $newBtcBalanceFiat.textContent = NumberFormatting.formatCurrency(newBtcBalanceFiat, request.fiatCurrency);
+                const newBalance = request.bitcoinAccount.balance + (amount * (fundTx.type === 'BTC' ? -1 : 1));
+                const newBalanceFormatted = NumberFormatting.formatNumber(this._unitsToCoins('BTC', newBalance), 8, 0);
+
+                if (leftAsset === 'BTC') {
+                    $leftNewBalance.textContent = `${newBalanceFormatted} BTC`;
+                    $leftAccount.classList.add('btc');
+                } else if (rightAsset === 'BTC') {
+                    $rightNewBalance.textContent = `${newBalanceFormatted} BTC`;
+                    $rightAccount.classList.add('btc');
+                }
+
+                /** @type {Segment[]} */
+                const segments = [{
+                    address: 'bitcoin',
+                    balance: request.bitcoinAccount.balance,
+                    active: true,
+                    newBalance,
+                }];
+
+                if (leftAsset === 'BTC') leftSegments = segments;
+                else rightSegments = segments;
+            }
+
+            if (leftAsset === 'USDC' || rightAsset === 'USDC') {
+                const amount = leftAsset === 'USDC' ? leftAmount : rightAmount;
+
+                const newBalance = request.polygonAddresses[0].balance + (amount * (fundTx.type === 'USDC' ? -1 : 1));
+                const newBalanceFormatted = NumberFormatting.formatNumber(this._unitsToCoins('USDC', newBalance), 2, 2);
+
+                if (leftAsset === 'USDC') {
+                    $leftNewBalance.textContent = `${newBalanceFormatted} USDC`;
+                    $leftAccount.classList.add('usdc');
+                } else if (rightAsset === 'USDC') {
+                    $rightNewBalance.textContent = `${newBalanceFormatted} USDC`;
+                    $rightAccount.classList.add('usdc');
+                }
+
+                /** @type {Segment[]} */
+                const segments = [{
+                    address: 'usdc',
+                    balance: request.polygonAddresses[0].balance,
+                    active: true,
+                    newBalance,
+                }];
+
+                if (leftAsset === 'USDC') leftSegments = segments;
+                else rightSegments = segments;
+            }
+
+            if (!leftSegments || !rightSegments) {
+                throw new Errors.KeyguardError('Missing segments for balance distribution bar');
+            }
 
             new BalanceDistributionBar({ // eslint-disable-line no-new
-                nimiqAddresses: request.nimiqAddresses,
-                bitcoinAccount: request.bitcoinAccount,
-                swapNimAddress,
-                nimFiatRate: leftFiatRate,
-                btcFiatRate: rightFiatRate,
-                newNimBalance,
-                newBtcBalanceFiat,
+                leftAsset,
+                rightAsset,
+                leftSegments,
+                rightSegments,
+                leftFiatRate,
+                rightFiatRate,
             }, $balanceDistributionBar);
         }
 
         // Set up password box.
-        /** @type {HTMLFormElement} */
-        const $passwordBox = (document.querySelector('#password-box'));
+        const $passwordBox = /** @type {HTMLFormElement} */ (document.querySelector('#password-box'));
         this._passwordBox = new PasswordBox($passwordBox, {
             hideInput: !request.keyInfo.encrypted,
             buttonI18nTag: 'passwordbox-confirm-swap',
@@ -365,7 +496,7 @@ class SignSwap {
     }
 
     /**
-     * @param {'NIM' | 'BTC' | 'EUR'} asset
+     * @param {'NIM' | 'BTC' | 'USDC' | 'EUR'} asset
      * @param {number} units
      * @returns {number}
      */
@@ -373,19 +504,21 @@ class SignSwap {
         switch (asset) {
             case 'NIM': return Nimiq.Policy.lunasToCoins(units);
             case 'BTC': return BitcoinUtils.satoshisToCoins(units);
+            case 'USDC': return PolygonUtils.centsToCoins(units);
             case 'EUR': return EuroUtils.centsToCoins(units);
             default: throw new Error(`Invalid asset ${asset}`);
         }
     }
 
     /**
-     * @param {'NIM' | 'BTC' | 'EUR'} asset
+     * @param {'NIM' | 'BTC' | 'USDC' | 'EUR'} asset
      * @returns {number}
      */
     _assetDecimals(asset) {
         switch (asset) {
             case 'NIM': return Math.log10(Nimiq.Policy.LUNAS_PER_COIN);
             case 'BTC': return Math.log10(BitcoinConstants.SATOSHIS_PER_COIN);
+            case 'USDC': return Math.log10(PolygonConstants.CENTS_PER_COINS);
             case 'EUR': return Math.log10(EuroConstants.CENTS_PER_COIN);
             default: throw new Error(`Invalid asset ${asset}`);
         }
@@ -407,12 +540,13 @@ class SignSwap {
         try {
             key = await KeyStore.instance.get(request.keyInfo.id, passwordBuf);
         } catch (e) {
-            if (e.message === 'Invalid key') {
+            const err = /** @type {Error} */ (e);
+            if (err.message === 'Invalid key') {
                 TopLevelApi.setLoading(false);
                 this._passwordBox.onPasswordIncorrect();
                 return;
             }
-            reject(new Errors.CoreError(e));
+            reject(new Errors.CoreError(err));
             return;
         }
         if (!key) {
@@ -420,9 +554,10 @@ class SignSwap {
             return;
         }
 
-        const btcKey = new BitcoinKey(key);
+        const bitcoinKey = new BitcoinKey(key);
+        const polygonKey = new PolygonKey(key);
 
-        /** @type {{nim: string, btc: string[], eur: string, btc_refund?: string}} */
+        /** @type {{nim: string, btc: string[], usdc: string, eur: string, btc_refund?: string}} */
         const privateKeys = {};
 
         if (request.fund.type === 'NIM') {
@@ -435,13 +570,13 @@ class SignSwap {
             const dedupedKeyPaths = keyPaths.filter(
                 (path, index) => keyPaths.indexOf(path) === index,
             );
-            const keyPairs = dedupedKeyPaths.map(path => btcKey.deriveKeyPair(path));
+            const keyPairs = dedupedKeyPaths.map(path => bitcoinKey.deriveKeyPair(path));
             const privKeys = keyPairs.map(keyPair => /** @type {Buffer} */ (keyPair.privateKey).toString('hex'));
             privateKeys.btc = privKeys;
 
             if (request.fund.changeOutput) {
                 // Calculate, validate and store output address
-                const address = btcKey.deriveAddress(request.fund.changeOutput.keyPath);
+                const address = bitcoinKey.deriveAddress(request.fund.changeOutput.keyPath);
                 if (request.fund.changeOutput.address && request.fund.changeOutput.address !== address) {
                     throw new Errors.InvalidRequestError(
                         'Given address is different from derived address for change output',
@@ -451,14 +586,92 @@ class SignSwap {
             }
 
             // Calculate and store refund key
-            const refundKeyPair = btcKey.deriveKeyPair(request.fund.refundKeyPath);
+            const refundKeyPair = bitcoinKey.deriveKeyPair(request.fund.refundKeyPath);
             const privKey = Nimiq.BufferUtils.toHex(
                 /** @type {Buffer} */ (refundKeyPair.privateKey),
             );
             privateKeys.btc_refund = privKey;
 
             // Calculate and store refund address
-            request.fund.refundAddress = btcKey.deriveAddress(request.fund.refundKeyPath);
+            request.fund.refundAddress = bitcoinKey.deriveAddress(request.fund.refundKeyPath);
+        }
+
+        if (request.fund.type === 'USDC') {
+            if (request.fund.description.name === 'openWithApproval') {
+                // Sign approval
+                const usdcContract = new ethers.Contract(
+                    CONFIG.USDC_CONTRACT_ADDRESS,
+                    PolygonContractABIs.USDC_CONTRACT_ABI,
+                );
+
+                const functionSignature = usdcContract.interface.encodeFunctionData(
+                    'approve',
+                    [CONFIG.USDC_HTLC_CONTRACT_ADDRESS, request.fund.description.args.approval],
+                );
+
+                // TODO: Make the domain parameters configurable in the request?
+                const domain = {
+                    name: 'USD Coin (PoS)', // This is currently the same for testnet and mainnet
+                    version: '1', // This is currently the same for testnet and mainnet
+                    verifyingContract: CONFIG.USDC_CONTRACT_ADDRESS,
+                    salt: ethers.utils.hexZeroPad(ethers.utils.hexlify(CONFIG.POLYGON_CHAIN_ID), 32),
+                };
+
+                const types = {
+                    MetaTransaction: [
+                        { name: 'nonce', type: 'uint256' },
+                        { name: 'from', type: 'address' },
+                        { name: 'functionSignature', type: 'bytes' },
+                    ],
+                };
+
+                const message = {
+                    // Has been validated to be defined when function called is `openWithApproval`
+                    nonce: /** @type {{ tokenNonce: number }} */ (request.fund.approval).tokenNonce,
+                    from: request.fund.request.from,
+                    functionSignature,
+                };
+
+                const signature = await polygonKey.signTypedData(
+                    request.fund.keyPath,
+                    domain,
+                    types,
+                    message,
+                );
+
+                const signerAddress = ethers.utils.verifyTypedData(domain, types, message, signature);
+                if (signerAddress !== request.fund.request.from) {
+                    reject(new Errors.CoreError('Failed to sign approval'));
+                    return;
+                }
+
+                const sigR = signature.slice(0, 66); // 0x prefix plus 32 bytes = 66 characters
+                const sigS = `0x${signature.slice(66, 130)}`; // 32 bytes = 64 characters
+                const sigV = parseInt(signature.slice(130, 132), 16); // last byte = 2 characters
+
+                const htlcContract = new ethers.Contract(
+                    CONFIG.USDC_HTLC_CONTRACT_ADDRESS,
+                    PolygonContractABIs.USDC_HTLC_CONTRACT_ABI,
+                );
+
+                request.fund.request.data = htlcContract.interface.encodeFunctionData(request.fund.description.name, [
+                    /* bytes32 id */ request.fund.description.args.id,
+                    /* address token */ request.fund.description.args.token,
+                    /* uint256 amount */ request.fund.description.args.amount,
+                    /* address refundAddress */ request.fund.description.args.refundAddress,
+                    /* address recipientAddress */ request.fund.description.args.recipientAddress,
+                    /* bytes32 hash */ request.fund.description.args.hash,
+                    /* uint256 timeout */ request.fund.description.args.timeout,
+                    /* uint256 fee */ request.fund.description.args.fee,
+                    /* uint256 approval */ request.fund.description.args.approval,
+                    /* bytes32 sigR */ sigR,
+                    /* bytes32 sigS */ sigS,
+                    /* uint8 sigV */ sigV,
+                ]);
+            }
+
+            const wallet = polygonKey.deriveKeyPair(request.fund.keyPath);
+            privateKeys.usdc = wallet.privateKey;
         }
 
         if (request.fund.type === 'EUR') {
@@ -471,18 +684,23 @@ class SignSwap {
         }
 
         if (request.redeem.type === 'BTC') {
-            const keyPairs = [btcKey.deriveKeyPair(request.redeem.input.keyPath)];
+            const keyPairs = [bitcoinKey.deriveKeyPair(request.redeem.input.keyPath)];
             const privKeys = keyPairs.map(keyPair => /** @type {Buffer} */ (keyPair.privateKey).toString('hex'));
             privateKeys.btc = privKeys;
 
             // Calculate, validate and store output address
-            const address = btcKey.deriveAddress(request.redeem.output.keyPath);
+            const address = bitcoinKey.deriveAddress(request.redeem.output.keyPath);
             if (request.redeem.output.address && request.redeem.output.address !== address) {
                 throw new Errors.InvalidRequestError(
                     'Given address is different from derived address for output',
                 );
             }
             request.redeem.output.address = address;
+        }
+
+        if (request.redeem.type === 'USDC') {
+            const wallet = polygonKey.deriveKeyPair(request.redeem.keyPath);
+            privateKeys.usdc = wallet.privateKey;
         }
 
         /** @type {string | undefined} */
@@ -512,6 +730,9 @@ class SignSwap {
                 if (value instanceof Uint8Array) {
                     return Nimiq.BufferUtils.toHex(value);
                 }
+                if (value instanceof ethers.utils.TransactionDescription) {
+                    return null;
+                }
                 return value;
             });
             const tmpCookieEncryptionKey = await NonPartitionedSessionStorage.set(
@@ -529,8 +750,9 @@ class SignSwap {
                 // the Hub is not compromised. An attacker would need to get access to the Keyguard and Hub servers.
                 tmpCookieEncryptionKey,
             });
-        } catch (error) {
-            reject(error);
+        } catch (e) {
+            const err = /** @type {Error} */ (e);
+            reject(err);
         }
     }
 

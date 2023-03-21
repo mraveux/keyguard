@@ -1,11 +1,15 @@
 /* global BitcoinRequestParserMixin */
+/* global PolygonRequestParserMixin */
 /* global TopLevelApi */
 /* global Nimiq */
 /* global SignSwap */
 /* global Errors */
 /* global Iban */
+/* global ethers */
+/* global CONFIG */
+/* global PolygonContractABIs */
 
-class SignSwapApi extends BitcoinRequestParserMixin(TopLevelApi) {
+class SignSwapApi extends PolygonRequestParserMixin(BitcoinRequestParserMixin(TopLevelApi)) {
     /**
      * @param {KeyguardRequest.SignSwapRequest} request
      * @returns {Promise<Parsed<KeyguardRequest.SignSwapRequest>>}
@@ -42,8 +46,9 @@ class SignSwapApi extends BitcoinRequestParserMixin(TopLevelApi) {
                     recipientType: Nimiq.Account.Type.HTLC,
                     flags: Nimiq.Transaction.Flag.CONTRACT_CREATION,
                 }),
-                /** @type {string} */
-                senderLabel: (this.parseLabel(request.fund.senderLabel, false, 'fund.senderLabel')),
+                senderLabel: /** @type {string} */ (this.parseLabel(
+                    request.fund.senderLabel, false, 'fund.senderLabel',
+                )),
             };
         } else if (request.fund.type === 'BTC') {
             parsedRequest.fund = {
@@ -68,6 +73,17 @@ class SignSwapApi extends BitcoinRequestParserMixin(TopLevelApi) {
                 throw new Errors.InvalidRequestError('For locktime to be effective, at least one input must have a '
                     + 'sequence number < 0xffffffff');
             }
+        } else if (request.fund.type === 'USDC') {
+            parsedRequest.fund = {
+                type: 'USDC',
+                keyPath: this.parsePolygonPath(request.fund.keyPath, 'fund.keyPath'),
+                description: /**
+                    @type {PolygonOpenDescription | PolygonOpenWithApprovalDescription}
+                */ (this.parseOpenGsnForwardRequest(request.fund, ['open', 'openWithApproval'])),
+                request: request.fund.request,
+                relayData: this.parseOpenGsnRelayData(request.fund.relayData),
+                approval: request.fund.approval,
+            };
         } else if (request.fund.type === 'EUR') {
             parsedRequest.fund = {
                 type: 'EUR',
@@ -91,8 +107,9 @@ class SignSwapApi extends BitcoinRequestParserMixin(TopLevelApi) {
                     recipientType: Nimiq.Account.Type.BASIC,
                     flags: Nimiq.Transaction.Flag.NONE,
                 }),
-                /** @type {string} */
-                recipientLabel: (this.parseLabel(request.redeem.recipientLabel, false, 'recipientLabel')),
+                recipientLabel: /** @type {string} */ (this.parseLabel(
+                    request.redeem.recipientLabel, false, 'recipientLabel',
+                )),
             };
         } else if (request.redeem.type === 'BTC') {
             parsedRequest.redeem = {
@@ -103,8 +120,20 @@ class SignSwapApi extends BitcoinRequestParserMixin(TopLevelApi) {
                     },
                     keyPath: this.parseBitcoinPath(request.redeem.input.keyPath, 'redeem.input.keyPath'),
                 },
-                /** @type {KeyguardRequest.BitcoinTransactionChangeOutput} */
-                output: (this.parseChangeOutput(request.redeem.output, false, 'redeem.output')),
+                output: /** @type {KeyguardRequest.BitcoinTransactionChangeOutput} */ (this.parseChangeOutput(
+                    request.redeem.output, false, 'redeem.output',
+                )),
+            };
+        } else if (request.redeem.type === 'USDC') {
+            parsedRequest.redeem = {
+                type: 'USDC',
+                keyPath: this.parsePolygonPath(request.redeem.keyPath, 'fund.keyPath'),
+                description: /**
+                    @type {PolygonRedeemDescription | PolygonRedeemWithSecretInDataDescription}
+                */ (this.parseOpenGsnForwardRequest(request.redeem, ['redeem', 'redeemWithSecretInData'])),
+                request: request.redeem.request,
+                relayData: this.parseOpenGsnRelayData(request.redeem.relayData),
+                amount: this.parsePositiveInteger(request.redeem.amount, false, 'redeem.amount'),
             };
         } else if (request.redeem.type === 'EUR') {
             parsedRequest.redeem = {
@@ -143,13 +172,15 @@ class SignSwapApi extends BitcoinRequestParserMixin(TopLevelApi) {
         parsedRequest.layout = this.parseLayout(request.layout);
 
         if (request.layout === SignSwapApi.Layouts.SLIDER && parsedRequest.layout === SignSwapApi.Layouts.SLIDER) {
-            // SLIDER layout is only allowed for NIM-BTC swaps
-            const assets = ['NIM', 'BTC'];
+            // SLIDER layout is only allowed for crypto-to-crypto swaps
+            const assets = ['NIM', 'BTC', 'USDC'];
             if (!assets.includes(parsedRequest.fund.type) || !assets.includes(parsedRequest.redeem.type)) {
                 throw new Errors.InvalidRequestError(
-                    'The \'slider\' layout is only allowed for swaps between NIM and BTC',
+                    'The \'slider\' layout is only allowed for swaps between NIM, BTC and USDC',
                 );
             }
+
+            parsedRequest.direction = this.parseDirection(request.direction);
 
             parsedRequest.nimiqAddresses = request.nimiqAddresses.map((address, index) => ({
                 address: this.parseAddress(address.address, `nimiqAddresses[${index}].address`).toUserFriendlyAddress(),
@@ -158,26 +189,34 @@ class SignSwapApi extends BitcoinRequestParserMixin(TopLevelApi) {
             parsedRequest.bitcoinAccount = {
                 balance: this.parsePositiveInteger(request.bitcoinAccount.balance, true, 'bitcoinAccount.balance'),
             };
+            parsedRequest.polygonAddresses = request.polygonAddresses.map(({ address, balance }, index) => ({
+                address: this.parsePolygonAddress(address, `polygonAddresses[${index}].address`),
+                balance: this.parsePositiveInteger(balance, true, `polygonAddresses[${index}].balance`),
+            }));
 
             const nimAddress = parsedRequest.fund.type === 'NIM'
                 ? parsedRequest.fund.transaction.sender.toUserFriendlyAddress()
                 : parsedRequest.redeem.type === 'NIM'
                     ? parsedRequest.redeem.transaction.recipient.toUserFriendlyAddress()
-                    : ''; // Should never happen, if parsing works correctly
-            const activeNimiqAddress = parsedRequest.nimiqAddresses
-                .find(addressInfo => addressInfo.address === nimAddress);
-            if (!activeNimiqAddress) {
-                throw new Errors.InvalidRequestError(
-                    'The address details of the NIM address doing the swap must be provided',
-                );
-            } else if (
-                parsedRequest.fund.type === 'NIM'
-                && activeNimiqAddress.balance < (
-                    parsedRequest.fund.transaction.value + parsedRequest.fund.transaction.fee
-                )
-            ) {
-                throw new Errors.InvalidRequestError('The sending NIM address does not have enough balance');
+                    : undefined;
+            if (nimAddress) {
+                const activeNimiqAddress = parsedRequest.nimiqAddresses
+                    .find(addressInfo => addressInfo.address === nimAddress);
+                if (!activeNimiqAddress) {
+                    throw new Errors.InvalidRequestError(
+                        'The address details of the NIM address doing the swap must be provided',
+                    );
+                } else if (
+                    parsedRequest.fund.type === 'NIM'
+                    && activeNimiqAddress.balance < (
+                        parsedRequest.fund.transaction.value + parsedRequest.fund.transaction.fee
+                    )
+                ) {
+                    throw new Errors.InvalidRequestError('The sending NIM address does not have enough balance');
+                }
             }
+
+            // TODO Verify that used Polygonaddress is the one in polygonAddresses[]
         }
 
         // Parse optional KYC data
@@ -216,6 +255,79 @@ class SignSwapApi extends BitcoinRequestParserMixin(TopLevelApi) {
             throw new Errors.InvalidRequestError('Invalid selected layout');
         }
         return /** @type KeyguardRequest.SignSwapRequestLayout */ (layout);
+    }
+
+    /**
+     *
+     * @param {unknown} direction
+     * @returns {'left-to-right' | 'right-to-left'}
+     */
+    parseDirection(direction) {
+        if (typeof direction !== 'string' || (direction !== 'left-to-right' && direction !== 'right-to-left')) {
+            throw new Error('Invalid direction');
+        }
+        return direction;
+    }
+
+    /**
+     *
+     * @param {KeyguardRequest.PolygonTransactionInfo} request
+     * @param {Array<'open' | 'openWithApproval' | 'redeem' | 'redeemWithSecretInData'>} allowedMethods
+     * @returns {PolygonOpenDescription
+     *     | PolygonOpenWithApprovalDescription
+     *     | PolygonRedeemDescription
+     *     | PolygonRedeemWithSecretInDataDescription}
+     */
+    parseOpenGsnForwardRequest(request, allowedMethods) {
+        request.request = this.parseOpenGsnForwardRequestRoot(request.request);
+
+        if (request.request.to !== CONFIG.USDC_HTLC_CONTRACT_ADDRESS) {
+            throw new Errors.InvalidRequestError('request.to address is not allowed');
+        }
+
+        const usdcHtlcContract = new ethers.Contract(
+            CONFIG.USDC_HTLC_CONTRACT_ADDRESS,
+            PolygonContractABIs.USDC_HTLC_CONTRACT_ABI,
+        );
+
+        // eslint-disable-next-line operator-linebreak
+        const description =
+            /** @type {PolygonOpenDescription
+             *     | PolygonOpenWithApprovalDescription
+             *     | PolygonRedeemDescription
+             *     | PolygonRedeemWithSecretInDataDescription}
+             */ (usdcHtlcContract.interface.parseTransaction({
+                data: request.request.data,
+                value: request.request.value,
+            }));
+
+        if (!allowedMethods.includes(description.name)) {
+            throw new Errors.InvalidRequestError('Requested Polygon contract method is invalid');
+        }
+
+        if (description.name === 'open' || description.name === 'openWithApproval') {
+            if (description.args.token !== CONFIG.USDC_CONTRACT_ADDRESS) {
+                throw new Errors.InvalidRequestError('Invalid USDC token contract in request data');
+            }
+
+            if (description.args.refundAddress !== request.request.from) {
+                throw new Errors.InvalidRequestError('USDC HTLC refund address must be same as sender');
+            }
+        }
+
+        if (description.name === 'redeem' || description.name === 'redeemWithSecretInData') {
+            if (description.args.target !== request.request.from) {
+                throw new Errors.InvalidRequestError('USDC HTLC target address must be same as sender');
+            }
+        }
+
+        // Check that approval object exists when method is 'openWithApproval', and unset for other methods.
+        if ((description.name === 'openWithApproval') !== !!request.approval) {
+            throw new Errors.InvalidRequestError('`approval` object is only allowed for contract method '
+                + '"openWithApproval"');
+        }
+
+        return description;
     }
 
     /**
@@ -306,9 +418,8 @@ class SignSwapApi extends BitcoinRequestParserMixin(TopLevelApi) {
 
 /**
  * @enum {KeyguardRequest.SignSwapRequestLayout}
- * @readonly
  */
-SignSwapApi.Layouts = {
+SignSwapApi.Layouts = Object.freeze({
     STANDARD: /** @type {'standard'} */ ('standard'),
     SLIDER: /** @type {'slider'} */ ('slider'),
-};
+});

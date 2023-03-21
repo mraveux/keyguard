@@ -10,30 +10,20 @@
 class DownloadLoginFile extends Nimiq.Observable {
     /**
      * @param {HTMLDivElement} [$el]
-     * @param {string} [description]
      */
-    constructor($el, description) {
+    constructor($el) {
         super();
 
-        this.$el = DownloadLoginFile._createElement($el, description);
+        this.$el = DownloadLoginFile._createElement($el);
 
         /** @type {LoginFile | null} */
         this._file = null;
 
-        /** @type {HTMLImageElement} */
-        this.$loginfile = (this.$el.querySelector('.loginfile'));
-
-        /** @type {HTMLAnchorElement} */
-        this.$loginfileLink = (this.$el.querySelector('.loginfile-link'));
-
-        /** @type {HTMLAnchorElement} */
-        this.$downloadButton = (this.$el.querySelector('.download-button'));
-
-        /** @type {HTMLButtonElement} */
-        this.$continueButton = (this.$el.querySelector('.continue'));
-
-        /** @type {SVGElement} */
-        this.$longTouchIndicator = (this.$el.querySelector('.long-touch-indicator'));
+        this.$loginfile = /** @type {HTMLImageElement} */ (this.$el.querySelector('.loginfile'));
+        this.$loginfileLink = /** @type {HTMLAnchorElement} */ (this.$el.querySelector('.loginfile-link'));
+        this.$downloadButton = /** @type {HTMLAnchorElement} */ (this.$el.querySelector('.download-button'));
+        this.$continueButton = /** @type {HTMLButtonElement} */ (this.$el.querySelector('.continue'));
+        this.$longTouchIndicator = /** @type {SVGElement} */ (this.$el.querySelector('.long-touch-indicator'));
 
         this.$loginfile.addEventListener('mousedown', e => this._onMouseDown(e));
         this.$loginfile.addEventListener('touchstart', () => this._onTouchStart());
@@ -47,10 +37,9 @@ class DownloadLoginFile extends Nimiq.Observable {
 
     /**
      * @param {?HTMLDivElement} [$el]
-     * @param {?string} [description]
      * @returns {HTMLDivElement}
      */
-    static _createElement($el, description) {
+    static _createElement($el) {
         $el = $el || document.createElement('div');
         $el.classList.add('download-loginfile');
 
@@ -70,8 +59,6 @@ class DownloadLoginFile extends Nimiq.Observable {
                 </g>
             </svg>
 
-            <p class="loginfile-description"></p>
-
             <div class="actions">
                 <span class="nq-label tap-and-hold" data-i18n="download-loginfile-tap-and-hold">
                     Tap and hold image
@@ -88,13 +75,6 @@ class DownloadLoginFile extends Nimiq.Observable {
             </div>
         `;
         /* eslint-enable max-len */
-
-        if (description) {
-            /** @type {HTMLParagraphElement} */
-            const $description = ($el.querySelector('.loginfile-description'));
-            $description.textContent = description;
-            $description.classList.add('visible');
-        }
 
         I18n.translateDom($el);
         return $el;
@@ -170,8 +150,7 @@ class DownloadLoginFile extends Nimiq.Observable {
      * @param {MouseEvent} event
      */
     _onMouseDown(event) {
-        /** @type {HTMLElement} */
-        const target = (event.target);
+        const target = /** @type {HTMLElement} */ (event.target);
         // Clicks on the continue or download buttons are already covered by a 'click' handler.
         if (target.matches('.continue') || target.matches('.download-button')) return;
 
